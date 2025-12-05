@@ -36,7 +36,14 @@ export class ClienteController {
       const search = typeof req.query.search === 'string' ? req.query.search : undefined
       const idLoja = req.query.id_loja ? Number(req.query.id_loja) : undefined
 
-      const result = await this.listClientes.execute(schema, { limit, offset, search, idLoja })
+      const filters: { limit: number; offset: number; search?: string; idLoja?: number } = {
+        limit,
+        offset,
+      }
+      if (search) filters.search = search
+      if (idLoja) filters.idLoja = idLoja
+
+      const result = await this.listClientes.execute(schema, filters)
       return res.json({
         data: result.rows,
         pagination: {
@@ -101,7 +108,27 @@ export class ClienteController {
 
       const userId = req.user?.userId ? parseInt(req.user.userId, 10) : 1
 
-      const cliente = await this.updateCliente.execute(schema, id, parseResult.data, userId)
+      // Filtrar propriedades undefined para evitar erros de tipo
+      const updateData: {
+        id_loja?: number
+        nome_completo?: string
+        email?: string
+        whatsapp?: string
+        cep?: string
+        sexo?: 'M' | 'F'
+        saldo?: number
+        aceite_termos?: boolean
+      } = {}
+      if (parseResult.data.id_loja !== undefined) updateData.id_loja = parseResult.data.id_loja
+      if (parseResult.data.nome_completo !== undefined) updateData.nome_completo = parseResult.data.nome_completo
+      if (parseResult.data.email !== undefined) updateData.email = parseResult.data.email
+      if (parseResult.data.whatsapp !== undefined) updateData.whatsapp = parseResult.data.whatsapp
+      if (parseResult.data.cep !== undefined) updateData.cep = parseResult.data.cep
+      if (parseResult.data.sexo !== undefined) updateData.sexo = parseResult.data.sexo
+      if (parseResult.data.saldo !== undefined) updateData.saldo = parseResult.data.saldo
+      if (parseResult.data.aceite_termos !== undefined) updateData.aceite_termos = parseResult.data.aceite_termos
+
+      const cliente = await this.updateCliente.execute(schema, id, updateData, userId)
       return res.json(cliente)
     } catch (error) {
       return next(error)
@@ -244,7 +271,14 @@ export class ClienteController {
         throw new AppError('Erro ao buscar item de recompensa', itemResponse.status)
       }
 
-      const itemRecompensa = await itemResponse.json()
+      const itemRecompensa = (await itemResponse.json()) as {
+        id_item_recompensa?: number
+        nome_item?: string
+        quantidade_pontos?: number
+        qtd_pontos?: number
+        nao_retirar_loja?: boolean
+        [key: string]: any
+      }
       const pontosNecessarios = itemRecompensa.quantidade_pontos || itemRecompensa.qtd_pontos
 
       if (!pontosNecessarios || pontosNecessarios <= 0) {
@@ -663,6 +697,232 @@ export class ClienteController {
           id_cliente: registro.id_cliente,
           id_item_recompensa: registro.id_item_recompensa,
           id_movimentacao: registro.id_movimentacao,
+        })
+      } finally {
+        client.release()
+      }
+    } catch (error) {
+      return next(error)
+    }
+  }
+
+  getMovimentacoes = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const schema = req.schema!
+      const idCliente = Number(req.params.id)
+      const page = Math.max(Number(req.query.page || 1), 1)
+      const limit = Math.min(Number(req.query.limit || 10), 100)
+      const offset = (page - 1) * limit
+      const order = req.query.order === 'asc' ? 'ASC' : 'DESC'
+      const tipo = req.query.tipo as string | undefined
+      const origem = req.query.origem as string | undefined
+      const dtIni = req.query.dt_ini as string | undefined
+      const dtFim = req.query.dt_fim as string | undefined
+
+      if (!idCliente || isNaN(idCliente)) {
+        throw new AppError('ID do cliente inválido', 400)
+      }
+
+      const client = await pool.connect()
+      try {
+        // Construir query com filtros
+        let whereConditions = [`m.id_cliente = $1`]
+        const queryParams: any[] = [idCliente]
+        let paramIndex = 2
+
+        if (tipo) {
+          whereConditions.push(`m.tipo = $${paramIndex}`)
+          queryParams.push(tipo)
+          paramIndex++
+        }
+
+        if (origem) {
+          whereConditions.push(`m.origem = $${paramIndex}`)
+          queryParams.push(origem)
+          paramIndex++
+        }
+
+        if (dtIni) {
+          whereConditions.push(`m.dt_cadastro >= $${paramIndex}`)
+          queryParams.push(dtIni)
+          paramIndex++
+        }
+
+        if (dtFim) {
+          whereConditions.push(`m.dt_cadastro <= $${paramIndex}`)
+          queryParams.push(dtFim)
+          paramIndex++
+        }
+
+        const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
+
+        // Buscar total de registros
+        const countResult = await client.query(
+          `SELECT COUNT(*) as total 
+           FROM "${schema}".cliente_pontos_movimentacao m
+           ${whereClause}`,
+          queryParams
+        )
+        const total = parseInt(countResult.rows[0]?.total || '0', 10)
+
+        // Buscar movimentações
+        const result = await client.query(
+          `SELECT 
+             m.id_movimentacao,
+             m.id_cliente,
+             m.tipo,
+             m.pontos,
+             m.saldo_resultante,
+             m.origem,
+             m.id_loja,
+             m.id_item_recompensa,
+             m.observacao,
+             m.dt_cadastro,
+             m.usu_cadastro
+           FROM "${schema}".cliente_pontos_movimentacao m
+           ${whereClause}
+           ORDER BY m.dt_cadastro ${order}
+           LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+          [...queryParams, limit, offset]
+        )
+
+        return res.json({
+          data: result.rows.map((row) => ({
+            id_movimentacao: row.id_movimentacao,
+            id_cliente: row.id_cliente,
+            tipo: row.tipo,
+            pontos: Number(row.pontos),
+            saldo_resultante: Number(row.saldo_resultante),
+            origem: row.origem,
+            id_loja: row.id_loja ? Number(row.id_loja) : undefined,
+            id_item_recompensa: row.id_item_recompensa ? Number(row.id_item_recompensa) : null,
+            observacao: row.observacao || null,
+            dt_cadastro: row.dt_cadastro,
+            usu_cadastro: Number(row.usu_cadastro),
+          })),
+          pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+          },
+        })
+      } finally {
+        client.release()
+      }
+    } catch (error) {
+      return next(error)
+    }
+  }
+
+  getDetalhesResgate = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const schema = req.schema!
+      const idResgate = Number(req.params.idResgate)
+
+      if (!idResgate || isNaN(idResgate)) {
+        throw new AppError('ID do resgate inválido', 400)
+      }
+
+      const client = await pool.connect()
+      try {
+        // Verificar se a tabela existe, se não existir, criar
+        const tableCheck = await client.query(
+          `SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = $1 
+            AND table_name = 'clientes_itens_recompensa'
+          )`,
+          [schema]
+        )
+
+        if (!tableCheck.rows[0].exists) {
+          try {
+            const result = await createClientesItensRecompensaTable(schema)
+            if (!result.success) {
+              return res.status(404).json({
+                status: 'error',
+                message: 'Resgate não encontrado',
+              })
+            }
+          } catch (migrationError: any) {
+            console.error(`[ClienteController] Erro ao executar migration:`, migrationError)
+            return res.status(404).json({
+              status: 'error',
+              message: 'Resgate não encontrado',
+            })
+          }
+        }
+
+        // Buscar detalhes do resgate por id_cliente_item_recompensa
+        const result = await client.query(
+          `SELECT 
+            cir.id_cliente_item_recompensa as id_resgate,
+            cir.codigo_resgate,
+            cir.resgate_utilizado,
+            cir.id_cliente,
+            cir.id_item_recompensa,
+            cir.id_movimentacao,
+            cir.dt_cadastro as dt_resgate,
+            c.nome_completo as cliente_nome,
+            c.email as cliente_email,
+            c.whatsapp as cliente_whatsapp,
+            c.saldo as cliente_saldo,
+            ir.nome_item as item_nome,
+            ir.descricao as item_descricao,
+            ir.qtd_pontos as item_pontos,
+            ir.nao_retirar_loja as item_nao_retirar_loja,
+            m.pontos as pontos_utilizados,
+            m.saldo_resultante,
+            m.observacao,
+            m.dt_cadastro as dt_movimentacao
+           FROM "${schema}".clientes_itens_recompensa cir
+           INNER JOIN "${schema}".clientes c ON c.id_cliente = cir.id_cliente
+           LEFT JOIN "${schema}".itens_recompensa ir ON ir.id_item_recompensa = cir.id_item_recompensa
+           LEFT JOIN "${schema}".cliente_pontos_movimentacao m ON m.id_movimentacao = cir.id_movimentacao
+           WHERE cir.id_cliente_item_recompensa = $1`,
+          [idResgate]
+        )
+
+        if (result.rows.length === 0) {
+          return res.status(404).json({
+            status: 'error',
+            message: 'Resgate não encontrado',
+          })
+        }
+
+        const registro = result.rows[0]
+
+        return res.json({
+          id_resgate: registro.id_resgate,
+          codigo_resgate: registro.codigo_resgate,
+          resgate_utilizado: registro.resgate_utilizado || false,
+          id_cliente: registro.id_cliente,
+          id_item_recompensa: registro.id_item_recompensa,
+          id_movimentacao: registro.id_movimentacao,
+          dt_resgate: registro.dt_resgate,
+          dt_utilizado: null,
+          cliente: {
+            id_cliente: registro.id_cliente,
+            nome: registro.cliente_nome,
+            email: registro.cliente_email,
+            whatsapp: registro.cliente_whatsapp,
+            saldo: registro.cliente_saldo,
+          },
+          item: {
+            id_item_recompensa: registro.id_item_recompensa,
+            nome: registro.item_nome,
+            descricao: registro.item_descricao,
+            quantidade_pontos: registro.item_pontos,
+            nao_retirar_loja: registro.item_nao_retirar_loja,
+          },
+          movimentacao: {
+            pontos: registro.pontos_utilizados,
+            saldo_resultante: registro.saldo_resultante,
+            observacao: registro.observacao,
+            dt_cadastro: registro.dt_movimentacao,
+          },
+          status: registro.resgate_utilizado ? 'entregue' : 'pendente',
         })
       } finally {
         client.release()
