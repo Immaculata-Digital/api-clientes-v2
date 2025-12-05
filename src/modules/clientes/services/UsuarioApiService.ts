@@ -23,7 +23,7 @@ export class UsuarioApiService {
         {
           login: data.login,
           email: data.email,
-          password: data.senha,
+          senha: data.senha,
         },
         { headers }
       )
