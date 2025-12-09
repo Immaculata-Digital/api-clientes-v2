@@ -146,6 +146,88 @@ export class ClienteController {
     }
   }
 
+  getPontosRecompensas = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const schema = req.schema!
+      const idCliente = Number(req.params.id)
+
+      if (!idCliente || isNaN(idCliente)) {
+        throw new AppError('ID do cliente inválido', 400)
+      }
+
+      const client = await pool.connect()
+      try {
+        const clienteResult = await client.query(
+          `SELECT id_cliente, saldo FROM "${schema}".clientes WHERE id_cliente = $1`,
+          [idCliente]
+        )
+
+        const cliente = clienteResult.rows[0]
+        if (!cliente) {
+          throw new AppError('Cliente não encontrado', 404)
+        }
+
+        // Catálogo de recompensas do tenant
+        const recompensasResult = await client.query(
+          `SELECT id_item_recompensa, nome_item, qtd_pontos, imagem_item, nao_retirar_loja 
+           FROM "${schema}".itens_recompensa
+           ORDER BY qtd_pontos ASC, id_item_recompensa ASC`
+        )
+
+        // Códigos de resgate pendentes (se a tabela existir)
+        const codigosPendentesMap = new Map<number, string>()
+        const tabelaCodigosExiste = await client.query(
+          `SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = $1 
+            AND table_name = 'clientes_itens_recompensa'
+          )`,
+          [schema]
+        )
+
+        if (tabelaCodigosExiste.rows[0]?.exists) {
+          const codigosPendentesResult = await client.query(
+            `SELECT id_item_recompensa, codigo_resgate
+             FROM "${schema}".clientes_itens_recompensa
+             WHERE id_cliente = $1
+               AND (resgate_utilizado = false OR resgate_utilizado IS NULL)
+             ORDER BY dt_cadastro DESC`,
+            [idCliente]
+          )
+
+          codigosPendentesResult.rows.forEach((row) => {
+            if (row.id_item_recompensa && row.codigo_resgate) {
+              codigosPendentesMap.set(row.id_item_recompensa, row.codigo_resgate)
+            }
+          })
+        } else {
+          // Cria a tabela em background para futuras chamadas, mas não quebra a resposta atual
+          createClientesItensRecompensaTable(schema).catch((migrationError) => {
+            console.warn('[ClienteController] Erro ao criar tabela clientes_itens_recompensa:', migrationError)
+          })
+        }
+
+        return res.json({
+          quantidade_pontos: Number(cliente.saldo ?? 0),
+          codigo_cliente: `CLI-${cliente.id_cliente}`,
+          recompensas: recompensasResult.rows.map((item) => ({
+            id_item_recompensa: item.id_item_recompensa,
+            nome_item: item.nome_item,
+            foto: item.imagem_item || null,
+            qtd_pontos: Number(item.qtd_pontos),
+            tipo: 'ITEM_RECOMPENSA',
+            nao_retirar_loja: Boolean(item.nao_retirar_loja),
+            codigo_resgate_pendente: codigosPendentesMap.get(item.id_item_recompensa) ?? null,
+          })),
+        })
+      } finally {
+        client.release()
+      }
+    } catch (error) {
+      return next(error)
+    }
+  }
+
   creditarPontos = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const schema = req.schema!
