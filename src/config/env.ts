@@ -22,5 +22,8 @@ export const env = {
   apiUsuarios: {
     url: process.env.API_USUARIOS_URL ?? 'http://localhost:3333/api',
   },
+  apiComunicacoes: {
+    url: process.env.API_COMUNICACOES_URL ?? 'http://localhost:3336/api',
+  },
 }
 

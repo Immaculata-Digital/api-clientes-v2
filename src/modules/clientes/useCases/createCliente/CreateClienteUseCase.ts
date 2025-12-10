@@ -2,6 +2,7 @@ import { AppError } from '../../../../core/errors/AppError'
 import type { CreateClienteDTO } from '../../dto/CreateClienteDTO'
 import type { IClienteRepository } from '../../repositories/IClienteRepository'
 import { usuarioApiService } from '../../services/UsuarioApiService'
+import { comunicacoesService } from '../../services/ComunicacoesService'
 
 export class CreateClienteUseCase {
   constructor(
@@ -41,6 +42,20 @@ export class CreateClienteUseCase {
       ...data,
       id_usuario: idUsuario,
       usu_cadastro: 1, // Será substituído pelo JWT depois
+    })
+
+    // Disparar email de boas-vindas (não bloquear se falhar)
+    comunicacoesService.dispararBoasVindas(
+      schemaName,
+      {
+        id_cliente: cliente.id_cliente,
+        nome_completo: cliente.nome_completo,
+        email: cliente.email,
+        codigo_cliente: cliente.codigo_cliente,
+      },
+      token
+    ).catch((error) => {
+      console.error('Erro ao disparar email de boas-vindas:', error)
     })
 
     return cliente

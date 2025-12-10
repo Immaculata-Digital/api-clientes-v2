@@ -307,6 +307,22 @@ export class ClienteController {
 
         const movimentacao = movimentacaoResult.rows[0]
 
+        // Disparar email de atualização de pontos (não bloquear se falhar)
+        const { comunicacoesService } = await import('../services/ComunicacoesService')
+        comunicacoesService.dispararAtualizacaoPontos(
+          schema,
+          {
+            id_cliente: cliente.id_cliente,
+            nome_completo: cliente.nome_completo,
+            email: cliente.email,
+            pontos_acumulados: pontosCalculados,
+            total_pontos: novoSaldo,
+          },
+          req.headers.authorization?.replace('Bearer ', '')
+        ).catch((error) => {
+          console.error('Erro ao disparar email de atualização de pontos:', error)
+        })
+
         // Retornar resposta no formato esperado pela API v1
         return res.status(201).json({
           movimentacao: {
@@ -488,6 +504,23 @@ export class ClienteController {
         )
 
         await client.query('COMMIT')
+
+        // Disparar email de resgate (não bloquear se falhar)
+        const { comunicacoesService } = await import('../services/ComunicacoesService')
+        comunicacoesService.dispararResgate(
+          schema,
+          {
+            id_cliente: cliente.id_cliente,
+            nome_completo: cliente.nome_completo,
+            email: cliente.email,
+            codigo_resgate: codigoResgate,
+            item_nome: itemRecompensa.nome_item || '',
+            pontos_apos_resgate: novoSaldo,
+          },
+          req.headers.authorization?.replace('Bearer ', '')
+        ).catch((error) => {
+          console.error('Erro ao disparar email de resgate:', error)
+        })
 
         // Retornar resposta no formato esperado pela API v1
         return res.status(201).json({
