@@ -5,12 +5,16 @@ interface ClienteData {
   id_cliente: number
   nome_completo: string
   email: string
+  whatsapp?: string
+  cep?: string
   codigo_cliente?: string
   saldo_pontos?: number
   pontos_acumulados?: number
   total_pontos?: number
   codigo_resgate?: string
   item_nome?: string
+  item_descricao?: string
+  item_qtd_pontos?: number
   pontos_apos_resgate?: number
   token_reset?: string
 }
@@ -105,6 +109,41 @@ export class ComunicacoesService {
       )
     } catch (error: any) {
       console.error('Erro ao disparar email de resgate:', error.message)
+    }
+  }
+
+  /**
+   * Dispara email de resgate não retirar loja para grupo ADM-FRANQUIA
+   */
+  async dispararResgateNaoRetirarLoja(schema: string, cliente: ClienteData, token?: string): Promise<void> {
+    try {
+      await axios.post(
+        `${env.apiComunicacoes.url}/${schema}/disparo-automatico`,
+        {
+          tipo_envio: 'resgate_nao_retirar_loja',
+          cliente: {
+            id_cliente: cliente.id_cliente,
+            nome_completo: cliente.nome_completo,
+            email: cliente.email,
+            whatsapp: cliente.whatsapp,
+            cep: cliente.cep,
+            saldo_pontos: cliente.saldo_pontos,
+            codigo_resgate: cliente.codigo_resgate,
+            item_nome: cliente.item_nome,
+            item_descricao: cliente.item_descricao,
+            item_qtd_pontos: cliente.item_qtd_pontos,
+            pontos_apos_resgate: cliente.pontos_apos_resgate || cliente.saldo_pontos,
+          },
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        }
+      )
+    } catch (error: any) {
+      console.error('Erro ao disparar email de resgate não retirar loja:', error.message)
     }
   }
 }

@@ -507,20 +507,46 @@ export class ClienteController {
 
         // Disparar email de resgate (não bloquear se falhar)
         const { comunicacoesService } = await import('../services/ComunicacoesService')
-        comunicacoesService.dispararResgate(
-          schema,
-          {
-            id_cliente: cliente.id_cliente,
-            nome_completo: cliente.nome_completo,
-            email: cliente.email,
-            codigo_resgate: codigoResgate,
-            item_nome: itemRecompensa.nome_item || '',
-            pontos_apos_resgate: novoSaldo,
-          },
-          req.headers.authorization?.replace('Bearer ', '')
-        ).catch((error) => {
-          console.error('Erro ao disparar email de resgate:', error)
-        })
+        const token = req.headers.authorization?.replace('Bearer ', '')
+        
+        // Se o item NÃO pode ser retirado em loja, disparar email para grupo ADM-FRANQUIA
+        if (itemRecompensa.nao_retirar_loja) {
+          comunicacoesService.dispararResgateNaoRetirarLoja(
+            schema,
+            {
+              id_cliente: cliente.id_cliente,
+              nome_completo: cliente.nome_completo,
+              email: cliente.email,
+              whatsapp: cliente.whatsapp,
+              cep: cliente.cep,
+              saldo_pontos: novoSaldo,
+              codigo_resgate: codigoResgate,
+              item_nome: itemRecompensa.nome_item || '',
+              item_descricao: itemRecompensa.descricao || '',
+              item_qtd_pontos: pontosNecessarios,
+              pontos_apos_resgate: novoSaldo,
+            },
+            token
+          ).catch((error) => {
+            console.error('Erro ao disparar email de resgate não retirar loja:', error)
+          })
+        } else {
+          // Se o item PODE ser retirado em loja, disparar email de resgate normal para o cliente
+          comunicacoesService.dispararResgate(
+            schema,
+            {
+              id_cliente: cliente.id_cliente,
+              nome_completo: cliente.nome_completo,
+              email: cliente.email,
+              codigo_resgate: codigoResgate,
+              item_nome: itemRecompensa.nome_item || '',
+              pontos_apos_resgate: novoSaldo,
+            },
+            token
+          ).catch((error) => {
+            console.error('Erro ao disparar email de resgate:', error)
+          })
+        }
 
         // Retornar resposta no formato esperado pela API v1
         return res.status(201).json({
