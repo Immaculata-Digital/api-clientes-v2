@@ -1,15 +1,20 @@
 # Dependências
-/node_modules
-
-# Build
-/dist
-/build
-
-# Logs
+node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build
+dist
+build
+*.tsbuildinfo
+
+# Logs
 logs
 *.log
 
@@ -17,25 +22,42 @@ logs
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+.env.test
+*.env
 
 # Sistema
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
+*~
 
 # IDEs/Editor
 .vscode/
 .idea/
-*.swp
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
 # Coverage / Test
 coverage
-/.nyc_output
+.nyc_output
+*.lcov
 
 # Arquivos temporários
 *.tmp
 *.temp
 *.bak
+*.cache
 
 # Cache
 .cache
+.parcel-cache
+.eslintcache
 
+# TypeScript
+*.tsbuildinfo

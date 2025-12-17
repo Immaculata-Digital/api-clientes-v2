@@ -51,7 +51,7 @@ export class CreateClienteUseCase {
         id_cliente: cliente.id_cliente,
         nome_completo: cliente.nome_completo,
         email: cliente.email,
-        codigo_cliente: cliente.codigo_cliente || `CLI-${cliente.id_cliente}`,
+        codigo_cliente: `CLI-${cliente.id_cliente}`,
       },
       token
     ).catch((error) => {

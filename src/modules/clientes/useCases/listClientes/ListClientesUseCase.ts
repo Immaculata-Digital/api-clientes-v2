@@ -12,7 +12,10 @@ export class ListClientesUseCase {
 
   async execute(schemaName: string, filters: ListClientesFilters = {}) {
     const { limit = 10, offset = 0, search, idLoja } = filters
-    return this.clienteRepository.findAll(schemaName, { limit, offset, search, idLoja })
+    const params: { limit: number; offset: number; search?: string; idLoja?: number } = { limit, offset }
+    if (search !== undefined) params.search = search
+    if (idLoja !== undefined) params.idLoja = idLoja
+    return this.clienteRepository.findAll(schemaName, params)
   }
 }
 

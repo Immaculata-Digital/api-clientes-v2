@@ -10,7 +10,7 @@ export const createClienteSchema = z.object({
   email: z.string().email('Email inválido').transform(normalizeEmail),
   whatsapp: z.string().min(10, 'WhatsApp inválido').transform(normalizeWhatsApp),
   cep: z.string().min(8, 'CEP inválido').max(8).transform(normalizeCEP),
-  sexo: z.enum(['M', 'F'], { errorMap: () => ({ message: 'Sexo deve ser M ou F' }) }),
+  sexo: z.enum(['M', 'F'], { message: 'Sexo deve ser M ou F' }),
   aceite_termos: z.boolean().refine((val) => val === true, { message: 'É necessário aceitar os termos' }),
   senha: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
 })

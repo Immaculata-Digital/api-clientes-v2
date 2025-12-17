@@ -1,0 +1,87 @@
+name: Build and Deploy - API Clientes Main
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build_and_push:
+    name: Build & Push Image to GHCR
+    runs-on: ubuntu-latest
+
+    env:
+      IMAGE_NAME: api-clientes-v2
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Build imagem
+        run: |
+          REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          docker build -t ghcr.io/${REPO_OWNER_LOWER}/${IMAGE_NAME}:main .
+
+      - name: Push imagem
+        run: |
+          REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          docker push ghcr.io/${REPO_OWNER_LOWER}/${IMAGE_NAME}:main
+
+  deploy:
+    name: Pull & Run on Server
+    runs-on: self-hosted
+    needs: build_and_push
+
+    env:
+      IMAGE_NAME: api-clientes-v2
+
+    steps:
+      - name: Login GHCR (no servidor)
+        run: |
+          REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${REPO_OWNER_LOWER} --password-stdin
+
+      - name: Pull da nova imagem
+        run: |
+          REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          docker pull ghcr.io/${REPO_OWNER_LOWER}/${IMAGE_NAME}:main
+
+      - name: Parar e remover container antigo
+        run: |
+          docker stop ${IMAGE_NAME}-main || true
+          docker rm ${IMAGE_NAME}-main || true
+
+      - name: Subir container novo
+        run: |
+          REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          docker run -d \
+            --name ${IMAGE_NAME}-main \
+            --restart unless-stopped \
+            -p 3335:3335 \
+            -e DB_HOST='${{ secrets.DB_HOST_MAIN }}' \
+            -e DB_PORT='${{ secrets.DB_PORT_MAIN }}' \
+            -e DB_NAME='${{ secrets.DB_NAME_MAIN }}' \
+            -e DB_USER='${{ secrets.DB_USER_MAIN }}' \
+            -e DB_PASS='${{ secrets.DB_PASS_MAIN }}' \
+            -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+            -e JWT_EXPIRES_IN='${{ secrets.JWT_EXPIRES_IN }}' \
+            -e API_USUARIOS_URL='${{ secrets.VITE_API_USUARIOS_URL_MAIN }}' \
+            -e API_COMUNICACOES_URL='${{ secrets.VITE_API_COMUNICACOES_URL_MAIN }}' \
+            -e PORT='3335' \
+            ghcr.io/${REPO_OWNER_LOWER}/${IMAGE_NAME}:main
+
+      - name: Limpeza de imagens antigas
+        run: |
+          docker image prune -f || true
+
