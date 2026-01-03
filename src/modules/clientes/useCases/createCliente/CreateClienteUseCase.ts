@@ -30,6 +30,7 @@ export class CreateClienteUseCase {
           email: data.email,
           senha: data.senha,
         },
+        schemaName,
         token
       )
       idUsuario = parseInt(usuarioResponse.id, 10)
