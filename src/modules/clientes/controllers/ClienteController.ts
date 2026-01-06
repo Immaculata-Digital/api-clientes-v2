@@ -354,51 +354,32 @@ export class ClienteController {
         throw new AppError('ID do item de recompensa é obrigatório', 400)
       }
 
-      // Buscar item de recompensa da API Admin v2
-      const adminApiUrl = process.env.ADMIN_API_URL || process.env.API_ADMIN_V2_URL || 'http://localhost:3335/api'
-      const itemResponse = await fetch(`${adminApiUrl}/${schema}/itens-recompensa/${id_item_recompensa}`, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      if (!itemResponse.ok) {
-        if (itemResponse.status === 404) {
-          throw new AppError('Item de recompensa não encontrado', 404)
-        }
-        throw new AppError('Erro ao buscar item de recompensa', itemResponse.status)
-      }
-
-      const itemRecompensa = (await itemResponse.json()) as {
+      // Buscar item de recompensa e verificar tabela antes de iniciar a transação
+      const preCheckClient = await pool.connect()
+      let itemRecompensa: {
         id_item_recompensa?: number
         nome_item?: string
-        quantidade_pontos?: number
         qtd_pontos?: number
         nao_retirar_loja?: boolean
-        [key: string]: any
-      }
-      const pontosNecessarios = itemRecompensa.quantidade_pontos || itemRecompensa.qtd_pontos
+        descricao?: string
+      } | null = null
 
-      if (!pontosNecessarios || pontosNecessarios <= 0) {
-        throw new AppError('Item de recompensa não possui pontos válidos', 400)
-      }
-
-      // Buscar cliente
-      const cliente = await this.getCliente.execute(schema, idCliente)
-
-      // Verificar saldo suficiente
-      if (cliente.saldo < pontosNecessarios) {
-        throw new AppError('Saldo insuficiente para débito', 409)
-      }
-
-      // Calcular novo saldo
-      const novoSaldo = cliente.saldo - pontosNecessarios
-
-      const userId = req.user?.userId ? parseInt(req.user.userId, 10) : 1
-
-      // Verificar se a tabela existe, se não existir, criar antes de iniciar a transação
-      const preCheckClient = await pool.connect()
       try {
+        // Buscar item de recompensa diretamente do banco de dados
+        const itemResult = await preCheckClient.query(
+          `SELECT id_item_recompensa, nome_item, qtd_pontos, nao_retirar_loja, descricao 
+           FROM "${schema}".itens_recompensa 
+           WHERE id_item_recompensa = $1`,
+          [id_item_recompensa]
+        )
+
+        if (itemResult.rows.length === 0) {
+          throw new AppError('Item de recompensa não encontrado', 404)
+        }
+
+        itemRecompensa = itemResult.rows[0]
+
+        // Verificar se a tabela existe, se não existir, criar antes de iniciar a transação
         const tableCheck = await preCheckClient.query(
           `SELECT EXISTS (
             SELECT FROM information_schema.tables 
@@ -419,6 +400,30 @@ export class ClienteController {
       } finally {
         preCheckClient.release()
       }
+
+      // Garantir que itemRecompensa não é null (já verificamos acima)
+      if (!itemRecompensa) {
+        throw new AppError('Item de recompensa não encontrado', 404)
+      }
+
+      const pontosNecessarios = itemRecompensa.qtd_pontos
+
+      if (!pontosNecessarios || pontosNecessarios <= 0) {
+        throw new AppError('Item de recompensa não possui pontos válidos', 400)
+      }
+
+      // Buscar cliente
+      const cliente = await this.getCliente.execute(schema, idCliente)
+
+      // Verificar saldo suficiente
+      if (cliente.saldo < pontosNecessarios) {
+        throw new AppError('Saldo insuficiente para débito', 409)
+      }
+
+      // Calcular novo saldo
+      const novoSaldo = cliente.saldo - pontosNecessarios
+
+      const userId = req.user?.userId ? parseInt(req.user.userId, 10) : 1
 
       // Atualizar saldo do cliente e inserir movimentação em uma transação
       const client = await pool.connect()
