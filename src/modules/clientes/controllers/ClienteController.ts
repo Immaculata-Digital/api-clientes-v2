@@ -545,7 +545,23 @@ export class ClienteController {
         const { comunicacoesService } = await import('../services/ComunicacoesService')
         const token = req.headers.authorization?.replace('Bearer ', '')
         
-        // Se o item NÃO pode ser retirado em loja, disparar email para grupo ADM-FRANQUIA
+        // Sempre disparar email de resgate para o cliente (campanha "Resgate")
+        comunicacoesService.dispararResgate(
+          schema,
+          {
+            id_cliente: cliente.id_cliente,
+            nome_completo: cliente.nome_completo,
+            email: cliente.email,
+            codigo_resgate: codigoResgate,
+            item_nome: itemRecompensa.nome_item || '',
+            pontos_apos_resgate: novoSaldo,
+          },
+          token
+        ).catch((error) => {
+          console.error('Erro ao disparar email de resgate:', error)
+        })
+        
+        // Se o item NÃO pode ser retirado em loja, também disparar email para grupo ADM-FRANQUIA
         if (itemRecompensa.nao_retirar_loja) {
           comunicacoesService.dispararResgateNaoRetirarLoja(
             schema,
@@ -565,22 +581,6 @@ export class ClienteController {
             token
           ).catch((error) => {
             console.error('Erro ao disparar email de resgate não retirar loja:', error)
-          })
-        } else {
-          // Se o item PODE ser retirado em loja, disparar email de resgate normal para o cliente
-          comunicacoesService.dispararResgate(
-            schema,
-            {
-              id_cliente: cliente.id_cliente,
-              nome_completo: cliente.nome_completo,
-              email: cliente.email,
-              codigo_resgate: codigoResgate,
-              item_nome: itemRecompensa.nome_item || '',
-              pontos_apos_resgate: novoSaldo,
-            },
-            token
-          ).catch((error) => {
-            console.error('Erro ao disparar email de resgate:', error)
           })
         }
 
