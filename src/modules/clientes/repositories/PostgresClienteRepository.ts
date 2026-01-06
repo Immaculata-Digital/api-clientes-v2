@@ -52,8 +52,14 @@ export class PostgresClienteRepository implements IClienteRepository {
       }
 
       if (filters.idLoja) {
-        conditions.push(`id_loja = $${params.length + 1}`)
-        params.push(filters.idLoja)
+        // Suporta tanto um único id_loja quanto um array
+        if (Array.isArray(filters.idLoja) && filters.idLoja.length > 0) {
+          conditions.push(`id_loja = ANY($${params.length + 1}::int[])`)
+          params.push(filters.idLoja)
+        } else if (typeof filters.idLoja === 'number') {
+          conditions.push(`id_loja = $${params.length + 1}`)
+          params.push(filters.idLoja)
+        }
       }
 
       if (conditions.length > 0) {

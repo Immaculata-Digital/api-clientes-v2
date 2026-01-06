@@ -1,7 +1,7 @@
 import type { ClienteProps, CreateClienteProps, UpdateClienteProps } from '../entities/Cliente'
 
 export interface IClienteRepository {
-  findAll(schemaName: string, filters: { limit: number; offset: number; search?: string; idLoja?: number }): Promise<{ rows: ClienteProps[]; count: number }>
+  findAll(schemaName: string, filters: { limit: number; offset: number; search?: string; idLoja?: number | number[] }): Promise<{ rows: ClienteProps[]; count: number }>
   findById(schemaName: string, id: number): Promise<ClienteProps | null>
   findByEmail(schemaName: string, email: string): Promise<ClienteProps | null>
   findByWhatsApp(schemaName: string, whatsapp: string): Promise<ClienteProps | null>

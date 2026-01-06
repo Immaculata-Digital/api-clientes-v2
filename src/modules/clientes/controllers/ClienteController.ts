@@ -34,9 +34,22 @@ export class ClienteController {
       const limit = Math.min(Number(req.query.limit || 10), 100)
       const offset = Number(req.query.offset || 0)
       const search = typeof req.query.search === 'string' ? req.query.search : undefined
-      const idLoja = req.query.id_loja ? Number(req.query.id_loja) : undefined
+      let idLoja: number | number[] | undefined = req.query.id_loja 
+        ? (typeof req.query.id_loja === 'string' && req.query.id_loja.includes(',')
+          ? req.query.id_loja.split(',').map(id => Number(id.trim())).filter(id => !Number.isNaN(id) && id > 0)
+          : Number(req.query.id_loja))
+        : undefined
 
-      const filters: { limit: number; offset: number; search?: string; idLoja?: number } = {
+      // Se o usuário estiver autenticado e não tiver passado id_loja, buscar lojas gestoras dele
+      if (!idLoja && req.user?.userId) {
+        const userId = req.user.userId // userId é UUID (string)
+        const lojasGestoras = await this.getLojasGestorasForUserInSchema(userId, schema)
+        if (lojasGestoras.length > 0) {
+          idLoja = lojasGestoras.length === 1 ? lojasGestoras[0] : lojasGestoras
+        }
+      }
+
+      const filters: { limit: number; offset: number; search?: string; idLoja?: number | number[] } = {
         limit,
         offset,
       }
@@ -55,6 +68,24 @@ export class ClienteController {
       })
     } catch (error) {
       return next(error)
+    }
+  }
+
+  private async getLojasGestorasForUserInSchema(userId: string, schema: string): Promise<number[]> {
+    const client = await pool.connect()
+    try {
+      // Buscar lojas gestoras do usuário na tabela user_lojas_gestoras
+      const result = await client.query<{ id_loja: number }>(
+        `SELECT id_loja FROM "${schema}".user_lojas_gestoras 
+         WHERE user_id = $1`,
+        [userId]
+      )
+      return result.rows.map(row => row.id_loja)
+    } catch (error) {
+      console.error('Erro ao buscar lojas gestoras do usuário:', error)
+      return []
+    } finally {
+      client.release()
     }
   }
 
