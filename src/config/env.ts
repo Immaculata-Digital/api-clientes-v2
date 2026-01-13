@@ -17,7 +17,7 @@ export const env = {
   },
   security: {
     jwtSecret: process.env.JWT_SECRET ?? 'default-jwt-secret',
-    jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '2h',
+    jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '12h',
   },
   apiUsuarios: {
     url: process.env.API_USUARIOS_URL ?? 'http://localhost:3333/api',
