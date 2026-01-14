@@ -140,7 +140,7 @@ export class ClienteController {
         throw new AppError('Falha de validação', 422, parseResult.error.flatten())
       }
 
-      const userId = req.user?.userId ? parseInt(req.user.userId, 10) : 1
+      const userId = req.user?.userId || '00000000-0000-0000-0000-000000000000' // UUID padrão se não houver usuário autenticado
 
       // Filtrar propriedades undefined para evitar erros de tipo
       const updateData: {
@@ -299,7 +299,7 @@ export class ClienteController {
       // Calcular novo saldo
       const novoSaldo = cliente.saldo + pontosCalculados
 
-      const userId = req.user?.userId ? parseInt(req.user.userId, 10) : 1
+      const userId = req.user?.userId || '00000000-0000-0000-0000-000000000000' // UUID padrão se não houver usuário autenticado
 
       // Atualizar saldo do cliente e inserir movimentação em uma transação
       const client = await pool.connect()
@@ -457,7 +457,7 @@ export class ClienteController {
       // Calcular novo saldo
       const novoSaldo = cliente.saldo - pontosNecessarios
 
-      const userId = req.user?.userId ? parseInt(req.user.userId, 10) : 1
+      const userId = req.user?.userId || '00000000-0000-0000-0000-000000000000' // UUID padrão se não houver usuário autenticado
 
       // Atualizar saldo do cliente e inserir movimentação em uma transação
       const client = await pool.connect()
@@ -802,7 +802,7 @@ export class ClienteController {
         throw new AppError('Código de resgate deve ter 5 caracteres', 400)
       }
 
-      const userId = req.user?.userId ? parseInt(req.user.userId, 10) : 1
+      const userId = req.user?.userId || '00000000-0000-0000-0000-000000000000' // UUID padrão se não houver usuário autenticado
 
       // Marcar código como utilizado
       const client = await pool.connect()

@@ -15,9 +15,9 @@ type ClienteRow = {
   saldo: number
   aceite_termos: boolean
   dt_cadastro: Date
-  usu_cadastro: number
+  usu_cadastro: string // UUID do usuário que cadastrou
   dt_altera: Date | null
-  usu_altera: number | null
+  usu_altera: string | null // UUID do usuário que alterou
 }
 
 const mapRowToProps = (row: ClienteRow): ClienteProps => ({

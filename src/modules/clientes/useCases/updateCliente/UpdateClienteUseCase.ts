@@ -5,7 +5,7 @@ import type { IClienteRepository } from '../../repositories/IClienteRepository'
 export class UpdateClienteUseCase {
   constructor(private readonly clienteRepository: IClienteRepository) {}
 
-  async execute(schemaName: string, id: number, data: UpdateClienteDTO, userId: number) {
+  async execute(schemaName: string, id: number, data: UpdateClienteDTO, userId: string) {
     // Verificar se email ou WhatsApp já estão em uso por outro cliente
     if (data.email) {
       const existingByEmail = await this.clienteRepository.findByEmail(schemaName, data.email)

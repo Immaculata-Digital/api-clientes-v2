@@ -10,9 +10,9 @@ export interface ClienteProps {
   saldo: number
   aceite_termos: boolean
   dt_cadastro: Date
-  usu_cadastro: number
+  usu_cadastro: string // UUID do usuário que cadastrou
   dt_altera?: Date | null
-  usu_altera?: number | null
+  usu_altera?: string | null // UUID do usuário que alterou
 }
 
 export type CreateClienteProps = Omit<ClienteProps, 'id_cliente' | 'dt_cadastro' | 'dt_altera' | 'usu_altera' | 'saldo'> & {
@@ -20,7 +20,7 @@ export type CreateClienteProps = Omit<ClienteProps, 'id_cliente' | 'dt_cadastro'
 }
 
 export type UpdateClienteProps = Partial<Omit<ClienteProps, 'id_cliente' | 'id_usuario' | 'dt_cadastro' | 'usu_cadastro'>> & {
-  usu_altera: number
+  usu_altera: string // UUID do usuário que alterou
 }
 
 export class Cliente {

@@ -44,10 +44,11 @@ export class CreateClienteUseCase {
     }
 
     // Criar cliente no banco
+    // No cadastro público, o usuário está se cadastrando, então usamos o próprio idUsuario como usu_cadastro
     const cliente = await this.clienteRepository.create(schemaName, {
       ...data,
       id_usuario: idUsuario,
-      usu_cadastro: 1, // Será substituído pelo JWT depois
+      usu_cadastro: idUsuario, // O próprio cliente está se cadastrando
     })
 
     // Disparar email de boas-vindas (não bloquear se falhar)
