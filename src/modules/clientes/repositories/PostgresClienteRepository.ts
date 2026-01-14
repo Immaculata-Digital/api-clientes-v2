@@ -5,7 +5,7 @@ import type { IClienteRepository } from './IClienteRepository'
 
 type ClienteRow = {
   id_cliente: number
-  id_usuario: number
+  id_usuario: string // UUID da API de usuários
   id_loja: number
   nome_completo: string
   email: string
@@ -126,7 +126,7 @@ export class PostgresClienteRepository implements IClienteRepository {
     }
   }
 
-  async findByIdUsuario(schema: string, idUsuario: number): Promise<ClienteProps | null> {
+  async findByIdUsuario(schema: string, idUsuario: string): Promise<ClienteProps | null> {
     const client = await pool.connect()
     try {
       const result = await client.query<ClienteRow>(

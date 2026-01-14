@@ -103,7 +103,10 @@ export class ClienteController {
   showByUsuario = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const schema = req.schema!
-      const idUsuario = Number(req.params.idUsuario)
+      const idUsuario = req.params.idUsuario
+      if (!idUsuario) {
+        throw new AppError('ID do usuário é obrigatório', 400)
+      }
       const cliente = await this.getClienteByUsuario.execute(schema, idUsuario)
       return res.json(cliente)
     } catch (error) {

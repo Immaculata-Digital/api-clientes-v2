@@ -5,7 +5,7 @@ export interface IClienteRepository {
   findById(schemaName: string, id: number): Promise<ClienteProps | null>
   findByEmail(schemaName: string, email: string): Promise<ClienteProps | null>
   findByWhatsApp(schemaName: string, whatsapp: string): Promise<ClienteProps | null>
-  findByIdUsuario(schemaName: string, idUsuario: number): Promise<ClienteProps | null>
+  findByIdUsuario(schemaName: string, idUsuario: string): Promise<ClienteProps | null>
   create(schemaName: string, data: CreateClienteProps): Promise<ClienteProps>
   update(schemaName: string, id: number, data: UpdateClienteProps): Promise<ClienteProps | null>
   delete(schemaName: string, id: number): Promise<boolean>

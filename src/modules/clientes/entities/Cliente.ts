@@ -1,6 +1,6 @@
 export interface ClienteProps {
   id_cliente: number
-  id_usuario: number
+  id_usuario: string // UUID da API de usuários
   id_loja: number
   nome_completo: string
   email: string

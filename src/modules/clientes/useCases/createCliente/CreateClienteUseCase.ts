@@ -22,7 +22,7 @@ export class CreateClienteUseCase {
     }
 
     // Criar usuário na API de usuários
-    let idUsuario: number
+    let idUsuario: string
     try {
       const usuarioResponse = await usuarioApiService.createClienteUsuario(
         {
@@ -33,7 +33,12 @@ export class CreateClienteUseCase {
         schemaName,
         token
       )
-      idUsuario = parseInt(usuarioResponse.id, 10)
+      
+      if (!usuarioResponse.id) {
+        throw new AppError('ID do usuário não foi retornado pela API de usuários', 500)
+      }
+      
+      idUsuario = usuarioResponse.id
     } catch (error: any) {
       throw new AppError(`Erro ao criar usuário: ${error.message}`, 500)
     }

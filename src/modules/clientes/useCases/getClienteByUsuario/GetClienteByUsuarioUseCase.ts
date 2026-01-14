@@ -4,7 +4,7 @@ import type { IClienteRepository } from '../../repositories/IClienteRepository'
 export class GetClienteByUsuarioUseCase {
   constructor(private readonly clienteRepository: IClienteRepository) {}
 
-  async execute(schemaName: string, idUsuario: number) {
+  async execute(schemaName: string, idUsuario: string) {
     const cliente = await this.clienteRepository.findByIdUsuario(schemaName, idUsuario)
 
     if (!cliente) {
