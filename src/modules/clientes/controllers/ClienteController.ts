@@ -115,7 +115,64 @@ export class ClienteController {
       }
       
       const cliente = await this.getClienteByUsuario.execute(schema, idUsuario)
-      return res.json(cliente)
+      
+      // Buscar itens de recompensa e códigos de resgate pendentes
+      const client = await pool.connect()
+      try {
+        // Catálogo de recompensas do tenant
+        const recompensasResult = await client.query(
+          `SELECT id_item_recompensa, nome_item, descricao, qtd_pontos, imagem_item, nao_retirar_loja 
+           FROM "${schema}".itens_recompensa
+           ORDER BY qtd_pontos ASC, id_item_recompensa ASC`
+        )
+
+        // Códigos de resgate pendentes (se a tabela existir)
+        const codigosPendentesMap = new Map<number, string>()
+        const tabelaCodigosExiste = await client.query(
+          `SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = $1 
+            AND table_name = 'clientes_itens_recompensa'
+          )`,
+          [schema]
+        )
+
+        if (tabelaCodigosExiste.rows[0]?.exists) {
+          const codigosPendentesResult = await client.query(
+            `SELECT id_item_recompensa, codigo_resgate
+             FROM "${schema}".clientes_itens_recompensa
+             WHERE id_cliente = $1
+               AND (resgate_utilizado = false OR resgate_utilizado IS NULL)
+             ORDER BY dt_cadastro DESC`,
+            [cliente.id_cliente]
+          )
+
+          codigosPendentesResult.rows.forEach((row) => {
+            if (row.id_item_recompensa && row.codigo_resgate) {
+              codigosPendentesMap.set(row.id_item_recompensa, row.codigo_resgate)
+            }
+          })
+        }
+
+        // Retornar dados completos do cliente com pontos e recompensas
+        return res.json({
+          ...cliente,
+          codigo_cliente: `CLI-${cliente.id_cliente}`,
+          quantidade_pontos: cliente.saldo,
+          recompensas: recompensasResult.rows.map((item) => ({
+            id_item_recompensa: item.id_item_recompensa,
+            nome_item: item.nome_item,
+            descricao: item.descricao || null,
+            foto: item.imagem_item || null,
+            qtd_pontos: Number(item.qtd_pontos),
+            tipo: 'ITEM_RECOMPENSA',
+            nao_retirar_loja: Boolean(item.nao_retirar_loja),
+            codigo_resgate_pendente: codigosPendentesMap.get(item.id_item_recompensa) ?? null,
+          })),
+        })
+      } finally {
+        client.release()
+      }
     } catch (error) {
       return next(error)
     }
