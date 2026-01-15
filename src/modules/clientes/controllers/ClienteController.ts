@@ -107,6 +107,13 @@ export class ClienteController {
       if (!idUsuario) {
         throw new AppError('ID do usuário é obrigatório', 400)
       }
+      
+      // Validar se idUsuario é um UUID válido
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      if (!uuidRegex.test(idUsuario)) {
+        throw new AppError('ID do usuário deve ser um UUID válido', 400)
+      }
+      
       const cliente = await this.getClienteByUsuario.execute(schema, idUsuario)
       return res.json(cliente)
     } catch (error) {
