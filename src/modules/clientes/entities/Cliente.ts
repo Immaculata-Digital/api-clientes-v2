@@ -7,6 +7,7 @@ export interface ClienteProps {
   whatsapp: string
   cep: string
   sexo: 'M' | 'F'
+  data_nascimento?: Date | null
   saldo: number
   aceite_termos: boolean
   dt_cadastro: Date
@@ -15,12 +16,14 @@ export interface ClienteProps {
   usu_altera?: string | null // UUID do usuário que alterou
 }
 
-export type CreateClienteProps = Omit<ClienteProps, 'id_cliente' | 'dt_cadastro' | 'dt_altera' | 'usu_altera' | 'saldo'> & {
+export type CreateClienteProps = Omit<ClienteProps, 'id_cliente' | 'dt_cadastro' | 'dt_altera' | 'usu_altera' | 'saldo' | 'data_nascimento'> & {
   senha: string // Para criar o usuário na API de usuários
+  data_nascimento?: string | Date | null // Pode vir como string do DTO
 }
 
-export type UpdateClienteProps = Partial<Omit<ClienteProps, 'id_cliente' | 'id_usuario' | 'dt_cadastro' | 'usu_cadastro'>> & {
+export type UpdateClienteProps = Partial<Omit<ClienteProps, 'id_cliente' | 'id_usuario' | 'dt_cadastro' | 'usu_cadastro' | 'data_nascimento'>> & {
   usu_altera: string // UUID do usuário que alterou
+  data_nascimento?: string | Date | null // Pode vir como string do DTO
 }
 
 export class Cliente {
@@ -31,6 +34,7 @@ export class Cliente {
     return new Cliente({
       ...data,
       id_cliente: 0, // Será definido pelo banco
+      data_nascimento: data.data_nascimento ? (typeof data.data_nascimento === 'string' ? new Date(data.data_nascimento) : data.data_nascimento) : null,
       saldo: 0,
       dt_cadastro: timestamp,
       dt_altera: null,
@@ -62,6 +66,9 @@ export class Cliente {
     }
     if (typeof data.sexo !== 'undefined') {
       nextProps.sexo = data.sexo
+    }
+    if (typeof data.data_nascimento !== 'undefined') {
+      nextProps.data_nascimento = data.data_nascimento ? new Date(data.data_nascimento) : null
     }
     if (typeof data.saldo !== 'undefined') {
       nextProps.saldo = data.saldo

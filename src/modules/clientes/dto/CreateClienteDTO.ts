@@ -5,6 +5,7 @@ export interface CreateClienteDTO {
   whatsapp: string
   cep: string
   sexo: 'M' | 'F'
+  data_nascimento?: string
   aceite_termos: boolean
   senha: string
 }

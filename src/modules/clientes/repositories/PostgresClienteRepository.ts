@@ -12,6 +12,7 @@ type ClienteRow = {
   whatsapp: string
   cep: string
   sexo: 'M' | 'F'
+  data_nascimento: Date | null
   saldo: number
   aceite_termos: boolean
   dt_cadastro: Date
@@ -29,6 +30,7 @@ const mapRowToProps = (row: ClienteRow): ClienteProps => ({
   whatsapp: row.whatsapp,
   cep: row.cep,
   sexo: row.sexo,
+  data_nascimento: row.data_nascimento,
   saldo: row.saldo,
   aceite_termos: row.aceite_termos,
   dt_cadastro: row.dt_cadastro,
@@ -146,8 +148,8 @@ export class PostgresClienteRepository implements IClienteRepository {
       const props = cliente.toJSON()
       const result = await client.query<ClienteRow>(
         `INSERT INTO "${schema}".clientes 
-         (id_usuario, id_loja, nome_completo, email, whatsapp, cep, sexo, saldo, aceite_termos, usu_cadastro, dt_cadastro)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+         (id_usuario, id_loja, nome_completo, email, whatsapp, cep, sexo, data_nascimento, saldo, aceite_termos, usu_cadastro, dt_cadastro)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
          RETURNING *`,
         [
           props.id_usuario,
@@ -157,6 +159,7 @@ export class PostgresClienteRepository implements IClienteRepository {
           props.whatsapp,
           props.cep,
           props.sexo,
+          props.data_nascimento || null,
           props.saldo,
           props.aceite_termos,
           props.usu_cadastro,
@@ -205,6 +208,10 @@ export class PostgresClienteRepository implements IClienteRepository {
       if (typeof data.sexo !== 'undefined') {
         updates.push(`sexo = $${paramIndex++}`)
         values.push(data.sexo)
+      }
+      if (typeof data.data_nascimento !== 'undefined') {
+        updates.push(`data_nascimento = $${paramIndex++}`)
+        values.push(data.data_nascimento ? data.data_nascimento : null)
       }
       if (typeof data.saldo !== 'undefined') {
         updates.push(`saldo = $${paramIndex++}`)
