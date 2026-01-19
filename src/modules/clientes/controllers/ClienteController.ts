@@ -188,7 +188,14 @@ export class ClienteController {
 
       const token = req.headers.authorization
 
-      const cliente = await this.createCliente.execute(schema, parseResult.data, token)
+      // Garantir que data_nascimento seja preservado se foi enviado no request
+      const dataToCreate = {
+        ...parseResult.data,
+        // Preservar data_nascimento do request original se estiver presente
+        data_nascimento: req.body.data_nascimento || parseResult.data.data_nascimento,
+      }
+
+      const cliente = await this.createCliente.execute(schema, dataToCreate, token)
       return res.status(201).json(cliente)
     } catch (error) {
       return next(error)
