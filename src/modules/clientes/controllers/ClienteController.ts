@@ -868,6 +868,7 @@ export class ClienteController {
       const schema = req.schema!
       const idCliente = Number(req.params.id)
       const codigoResgate = req.params.codigoResgate?.toUpperCase().trim()
+      const { id_loja } = req.body
 
       if (!codigoResgate || codigoResgate.length !== 5) {
         throw new AppError('Código de resgate deve ter 5 caracteres', 400)
@@ -878,6 +879,8 @@ export class ClienteController {
       // Marcar código como utilizado
       const client = await pool.connect()
       try {
+        await client.query('BEGIN')
+
         // Verificar se a tabela existe
         const tableCheck = await client.query(
           `SELECT EXISTS (
@@ -889,6 +892,7 @@ export class ClienteController {
         )
 
         if (!tableCheck.rows[0].exists) {
+          await client.query('ROLLBACK')
           return res.status(404).json({
             status: 'error',
             message: 'Código de resgate não encontrado',
@@ -909,6 +913,7 @@ export class ClienteController {
         )
 
         if (result.rows.length === 0) {
+          await client.query('ROLLBACK')
           return res.status(404).json({
             status: 'error',
             message: 'Código de resgate não encontrado',
@@ -919,6 +924,7 @@ export class ClienteController {
 
         // Verificar se já foi utilizado
         if (registro.resgate_utilizado) {
+          await client.query('ROLLBACK')
           return res.status(409).json({
             status: 'error',
             message: 'Código de resgate já foi utilizado',
@@ -927,6 +933,7 @@ export class ClienteController {
 
         // Verificar se o código pertence ao cliente informado (se fornecido)
         if (idCliente && registro.id_cliente !== idCliente) {
+          await client.query('ROLLBACK')
           return res.status(403).json({
             status: 'error',
             message: 'Código de resgate não pertence a este cliente',
@@ -941,6 +948,29 @@ export class ClienteController {
           [codigoResgate]
         )
 
+        // Se existe movimentação associada, atualizar com id_loja se fornecido
+        if (registro.id_movimentacao) {
+          // Converter id_loja para número se fornecido
+          let idLojaToUpdate: number | null = null
+          if (id_loja !== undefined && id_loja !== null) {
+            idLojaToUpdate = typeof id_loja === 'string' ? parseInt(id_loja, 10) : Number(id_loja)
+            // Se a conversão resultou em NaN, usar null
+            if (isNaN(idLojaToUpdate)) {
+              idLojaToUpdate = null
+            }
+          }
+          
+          // Atualizar a movimentação com id_loja (pode ser um número ou null)
+          await client.query(
+            `UPDATE "${schema}".cliente_pontos_movimentacao 
+             SET id_loja = $1
+             WHERE id_movimentacao = $2`,
+            [idLojaToUpdate, registro.id_movimentacao]
+          )
+        }
+
+        await client.query('COMMIT')
+
         return res.json({
           status: 'success',
           codigo_resgate: codigoResgate,
@@ -949,6 +979,9 @@ export class ClienteController {
           id_item_recompensa: registro.id_item_recompensa,
           id_movimentacao: registro.id_movimentacao,
         })
+      } catch (error) {
+        await client.query('ROLLBACK')
+        throw error
       } finally {
         client.release()
       }
