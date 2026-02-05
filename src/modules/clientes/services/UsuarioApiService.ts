@@ -8,7 +8,7 @@ export class UsuarioApiService {
     this.baseUrl = env.apiUsuarios.url.replace(/\/api\/?$/, '')
   }
 
-  async createClienteUsuario(data: { login: string; email: string; senha: string }, schema: string, token?: string): Promise<{ id: string }> {
+  async createClienteUsuario(data: { login: string; email: string; senha: string; nome?: string }, schema: string, token?: string): Promise<{ id: string }> {
     try {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -25,6 +25,7 @@ export class UsuarioApiService {
           login: data.login,
           email: data.email,
           senha: data.senha,
+          nome: data.nome,
           schema: schema,
         },
         { headers }
@@ -59,7 +60,7 @@ export class UsuarioApiService {
       const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido'
       const errorStatus = error.response?.status ? ` (Status: ${error.response.status})` : ''
       const errorDetails = error.response?.data?.details ? ` - Detalhes: ${JSON.stringify(error.response.data.details)}` : ''
-      
+
       throw new Error(`Erro ao criar/buscar usuário: ${errorMessage}${errorStatus}${errorDetails}`)
     }
   }

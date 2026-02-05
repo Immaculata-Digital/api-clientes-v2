@@ -7,7 +7,7 @@ import { comunicacoesService } from '../../services/ComunicacoesService'
 export class CreateClienteUseCase {
   constructor(
     private readonly clienteRepository: IClienteRepository,
-  ) {}
+  ) { }
 
   async execute(schemaName: string, data: CreateClienteDTO, token?: string) {
     // Verificar se já existe cliente com o mesmo email ou WhatsApp
@@ -29,15 +29,16 @@ export class CreateClienteUseCase {
           login: data.email,
           email: data.email,
           senha: data.senha,
+          nome: data.nome_completo,
         },
         schemaName,
         token
       )
-      
+
       if (!usuarioResponse.id) {
         throw new AppError('ID do usuário não foi retornado pela API de usuários', 500)
       }
-      
+
       idUsuario = usuarioResponse.id
     } catch (error: any) {
       throw new AppError(`Erro ao criar usuário: ${error.message}`, 500)
