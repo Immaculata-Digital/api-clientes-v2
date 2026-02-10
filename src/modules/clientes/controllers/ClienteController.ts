@@ -34,7 +34,7 @@ export class ClienteController {
       const limit = Math.min(Number(req.query.limit || 10), 100)
       const offset = Number(req.query.offset || 0)
       const search = typeof req.query.search === 'string' ? req.query.search : undefined
-      let idLoja: number | number[] | undefined = req.query.id_loja 
+      let idLoja: number | number[] | undefined = req.query.id_loja
         ? (typeof req.query.id_loja === 'string' && req.query.id_loja.includes(',')
           ? req.query.id_loja.split(',').map(id => Number(id.trim())).filter(id => !Number.isNaN(id) && id > 0)
           : Number(req.query.id_loja))
@@ -107,15 +107,15 @@ export class ClienteController {
       if (!idUsuario) {
         throw new AppError('ID do usuário é obrigatório', 400)
       }
-      
+
       // Validar se idUsuario é um UUID válido
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
       if (!uuidRegex.test(idUsuario)) {
         throw new AppError('ID do usuário deve ser um UUID válido', 400)
       }
-      
+
       const cliente = await this.getClienteByUsuario.execute(schema, idUsuario)
-      
+
       // Buscar itens de recompensa e códigos de resgate pendentes
       const client = await pool.connect()
       try {
@@ -497,7 +497,7 @@ export class ClienteController {
         if (!tableCheck.rows[0].exists) {
           // Criar tabela se não existir (fora da transação principal)
           const migrationResult = await createClientesItensRecompensaTable(schema)
-          
+
           if (!migrationResult.success) {
             throw new AppError(`Erro ao criar tabela de códigos de resgate: ${migrationResult.message}`, 500)
           }
@@ -618,7 +618,7 @@ export class ClienteController {
         // Disparar email de resgate (não bloquear se falhar)
         const { comunicacoesService } = await import('../services/ComunicacoesService')
         const token = req.headers.authorization?.replace('Bearer ', '')
-        
+
         // Sempre disparar email de resgate para o cliente (campanha "Resgate")
         comunicacoesService.dispararResgate(
           schema,
@@ -634,7 +634,7 @@ export class ClienteController {
         ).catch((error) => {
           console.error('Erro ao disparar email de resgate:', error)
         })
-        
+
         // Se o item NÃO pode ser retirado em loja, também disparar email para grupo ADM-FRANQUIA
         if (itemRecompensa.nao_retirar_loja) {
           comunicacoesService.dispararResgateNaoRetirarLoja(
@@ -707,7 +707,7 @@ export class ClienteController {
           // Tabela não existe, criar automaticamente
           try {
             const result = await createClientesItensRecompensaTable(schema)
-            
+
             if (!result.success) {
               console.error(`[ClienteController] Erro ao criar tabela: ${result.message}`)
               return res.status(404).json({
@@ -798,7 +798,7 @@ export class ClienteController {
           // Tabela não existe, criar automaticamente
           try {
             const result = await createClientesItensRecompensaTable(schema)
-            
+
             if (!result.success) {
               console.error(`[ClienteController] Erro ao criar tabela: ${result.message}`)
               return res.status(404).json({
@@ -959,7 +959,7 @@ export class ClienteController {
               idLojaToUpdate = null
             }
           }
-          
+
           // Atualizar a movimentação com id_loja (pode ser um número ou null)
           await client.query(
             `UPDATE "${schema}".cliente_pontos_movimentacao 
@@ -1062,8 +1062,11 @@ export class ClienteController {
              m.id_item_recompensa,
              m.observacao,
              m.dt_cadastro,
-             m.usu_cadastro
+             m.usu_cadastro,
+             cir.codigo_resgate,
+             cir.resgate_utilizado
            FROM "${schema}".cliente_pontos_movimentacao m
+           LEFT JOIN "${schema}".clientes_itens_recompensa cir ON cir.id_movimentacao = m.id_movimentacao
            ${whereClause}
            ORDER BY m.dt_cadastro ${order}
            LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
@@ -1083,6 +1086,8 @@ export class ClienteController {
             observacao: row.observacao || null,
             dt_cadastro: row.dt_cadastro,
             usu_cadastro: Number(row.usu_cadastro),
+            codigo_resgate: row.codigo_resgate || null,
+            resgate_utilizado: row.resgate_utilizado || false,
           })),
           pagination: {
             total,
