@@ -92,7 +92,7 @@ export class ClienteController {
   show = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const schema = req.schema!
-      const idParam = req.params.id
+      const idParam = req.params.id || ''
 
       // Se o parâmetro tiver 10 ou 11 dígitos numéricos, buscar por telefone
       if (/^\d{10,11}$/.test(idParam)) {
