@@ -92,7 +92,18 @@ export class ClienteController {
   show = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const schema = req.schema!
-      const id = Number(req.params.id)
+      const idParam = req.params.id
+
+      // Se o parâmetro tiver 10 ou 11 dígitos numéricos, buscar por telefone
+      if (/^\d{10,11}$/.test(idParam)) {
+        const cliente = await clienteRepository.findByWhatsApp(schema, idParam)
+        if (!cliente) {
+          throw new AppError('Cliente não encontrado', 404)
+        }
+        return res.json(cliente)
+      }
+
+      const id = Number(idParam)
       const cliente = await this.getCliente.execute(schema, id)
       return res.json(cliente)
     } catch (error) {

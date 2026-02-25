@@ -119,7 +119,7 @@ export class PostgresClienteRepository implements IClienteRepository {
       // Normalizar WhatsApp removendo caracteres não numéricos
       const normalized = whatsapp.replace(/\D/g, '')
       const result = await client.query<ClienteRow>(
-        `SELECT * FROM "${schema}".clientes WHERE REPLACE(REPLACE(REPLACE(REPLACE(whatsapp, ' ', ''), '-', ''), '(', ''), ')', '') = $1`,
+        `SELECT * FROM "${schema}".clientes WHERE REPLACE(REPLACE(REPLACE(REPLACE(whatsapp, ' ', ''), '-', ''), '(', ''), ')', '') LIKE '%' || $1`,
         [normalized]
       )
       return result.rows[0] ? mapRowToProps(result.rows[0]) : null
