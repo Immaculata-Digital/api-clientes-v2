@@ -1180,7 +1180,8 @@ export class ClienteController {
            INNER JOIN "${schema}".clientes c ON c.id_cliente = cir.id_cliente
            LEFT JOIN "${schema}".itens_recompensa ir ON ir.id_item_recompensa = cir.id_item_recompensa
            LEFT JOIN "${schema}".cliente_pontos_movimentacao m ON m.id_movimentacao = cir.id_movimentacao
-           WHERE cir.id_cliente_item_recompensa = $1`,
+           WHERE (cir.id_cliente_item_recompensa = $1 OR cir.id_movimentacao = $1)
+           LIMIT 1`,
           [idResgate]
         )
 

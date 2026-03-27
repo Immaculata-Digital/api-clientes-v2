@@ -7,6 +7,8 @@ export interface CreateClienteDTO {
   sexo: 'M' | 'F'
   data_nascimento?: string
   aceite_termos: boolean
+  latitude?: number
+  longitude?: number
   senha: string
 }
 

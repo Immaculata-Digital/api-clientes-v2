@@ -10,6 +10,8 @@ export interface ClienteProps {
   data_nascimento?: Date | null
   saldo: number
   aceite_termos: boolean
+  latitude?: number | null
+  longitude?: number | null
   dt_cadastro: Date
   usu_cadastro: string // UUID do usuário que cadastrou
   dt_altera?: Date | null
@@ -35,6 +37,8 @@ export class Cliente {
       ...data,
       id_cliente: 0, // Será definido pelo banco
       data_nascimento: data.data_nascimento ? (typeof data.data_nascimento === 'string' ? new Date(data.data_nascimento) : data.data_nascimento) : null,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
       saldo: 0,
       dt_cadastro: timestamp,
       dt_altera: null,
@@ -75,6 +79,12 @@ export class Cliente {
     }
     if (typeof data.aceite_termos !== 'undefined') {
       nextProps.aceite_termos = data.aceite_termos
+    }
+    if (typeof data.latitude !== 'undefined') {
+      nextProps.latitude = data.latitude
+    }
+    if (typeof data.longitude !== 'undefined') {
+      nextProps.longitude = data.longitude
     }
 
     nextProps.usu_altera = data.usu_altera
